@@ -1,0 +1,8 @@
+(load-device "si7021")
+(define sensor (make-si7021 (i2c (board "SCL") (board "SDA"))))
+(display "Temperature: ")
+(display (si7021-temperature sensor))
+(newline)
+(display "   Humidity: ")
+(display (si7021-relative-humidity sensor))
+(newline)
