@@ -1,0 +1,16 @@
+;;; Ramp an analog output up and down
+
+(define (analog)
+  (let ((output (analog-pin (board "A1") **OUTPUT**)))
+    (define (loop val delta)
+      (let ((new-val (+ val delta)))
+        (display new-val)
+        (newline)
+        (sleep 0.1)
+        (cond ((<= new-val 0)
+               (loop new-val (* -1 delta)))
+              ((>= new-val 65535)
+               (loop new-val (* -1 delta)))
+              (#t (pin-value! output new-val)
+                  (loop new-val delta)))))
+    (loop 0 1000)))
