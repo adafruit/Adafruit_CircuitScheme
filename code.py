@@ -143,16 +143,21 @@ def load(filename):
         except Exception as e:
             sys.print_exception(e)
 
-def repl(prompt='==> ', inport=InPort(sys.stdin), out=sys.stdout):
+def repl():
     "A prompt-read-eval-print loop."
     while True:
         try:
-            if prompt: sys.stdout.write(prompt)
-            x = parse(inport)
+            sys.stdout.write('==>')
+
+            input = sys.stdin.readline()
+
+            x = parse(input)
             if x is eof_object: return
             val = eval(x)
-            if val is not None and out:
+            if val is not None:
                 print(to_string(val))
+        except KeyboardInterrupt:
+            continue
         except Exception as e:
             sys.print_exception(e)
 
