@@ -134,7 +134,14 @@ def load(filename):
     "Eval every expression from a file."
     if not filename.endswith('.scm'):
         filename = filename + '.scm'
-    repl(None, InPort(open(filename)), None)
+    inport = InPort(open(filename))
+    while True:
+        try:
+            x = parse(inport)
+            if x is eof_object: return
+            eval(x)
+        except Exception as e:
+            sys.print_exception(e)
 
 def repl(prompt='==> ', inport=InPort(sys.stdin), out=sys.stdout):
     "A prompt-read-eval-print loop."
