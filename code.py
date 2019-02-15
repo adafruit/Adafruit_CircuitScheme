@@ -141,7 +141,7 @@ def repl(prompt='==> ', inport=InPort(sys.stdin), out=sys.stdout):
     "A prompt-read-eval-print loop."
     while True:
         try:
-            if prompt: sys.stderr.write(prompt)
+            if prompt: sys.stdout.write(prompt)
             x = parse(inport)
             if x is eof_object: return
             val = eval(x)
