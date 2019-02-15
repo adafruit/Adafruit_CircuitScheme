@@ -27,11 +27,10 @@ All text above must be included in any redistribution.
 
 ################ Symbol, Procedure, classes
 
-# from __future__ import division
-# from __future__ import print_function
 import ure, sys
 from io import StringIO
 import gc
+
 
 class Symbol(str): pass
 
