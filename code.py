@@ -268,6 +268,10 @@ def repl():
 
                 elif ch == 20:            # CTRL-T: transpose characters
                     if index > 0 and index < len(line):
+                        ch1 = line[index - 1]
+                        ch2 = line[index]
+                        line = line[:index - 1] + ch2 + ch1 + line[index + 1:]
+
 
                 #####################
 
