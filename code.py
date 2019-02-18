@@ -149,16 +149,18 @@ history_max_size = 40
 history = []
 
 def load_history():
-    with open('history.txt', 'r') as f:
+    with open('history.txt') as f:
         history = f.readlines()
 
 def save_history():
-    with open('history.txt', 'w'):
-        for line in history[:history_max_size]:
+    with open('history.txt', 'w') as f:
+        for line in history:
             f.write('{0}\n'.format(line))
 
 def add_to_history(line):
-    if not history or history[0] != line:
+    global history
+    if line and (not history or history[0] != line):
+        history = history[:history_max_size - 1]
         history.insert(0, line.strip())
 
 def get_history(offset):
@@ -264,8 +266,8 @@ def repl():
 
                 #####################
 
-                elif ch == 19:            # CTRL-S: save history
-                    save_history()
+                elif ch == 20:            # CTRL-T: transpose characters
+                    if index > 0 and index < len(line):
 
                 #####################
 
@@ -643,6 +645,6 @@ if __name__ == '__main__':
     except OSError:
         pass
 
-    load_history()
+    # load_history()
     repl()
-    save_history()
+    # save_history()
