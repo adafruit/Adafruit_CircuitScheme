@@ -35,11 +35,15 @@
            (inner a-predicate (cdr a-list) (append accumulated (list (car a-list)))))))
   (inner a-predicate a-list '()))
 
+;; Remove shorthands for eq? and equal?
+
 (define (delq element l)
   (remove (lambda (x) (eq? x element)) l))
 
 (define (delete element l)
   (remove (lambda (x) (equal? x element)) l))
+
+;; list decomposition functions
 
 (define (caar l) (car (car l)))
 (define (cadr l) (car (cdr l)))
@@ -71,3 +75,78 @@
 (define (cddadr l) (cdr (cdr (car (cdr l)))))
 (define (cdddar l) (cdr (cdr (cdr (car l)))))
 (define (cddddr l) (cdr (cdr (cdr (cdr l)))))
+
+;; Return the last item in a list
+
+(define (last l)
+  (cond ((null? l)
+         '())
+        ((null? (cdr l))
+         (car l))
+        (#t (last (cdr l)))))
+
+;; return evereything except the last item.
+;; This returns a new list
+
+(define (except-last l)
+  (define (inner l accumulated)
+    (if (null? (cdr l))
+        accumulated
+        (inner (cdr l) (append accumulated (list (car l))))))
+  (cond ((or (null? l)
+             (null? (cdr l)))
+         '())
+        (#t
+         (inner l '()))))
+
+;; Reverse a list
+
+(define (reverse l)
+  (define (inner l accumulated)
+    (if (null? l)
+        accumulated
+        (inner (cdr l) (cons (car l) accumulated))))
+  (inner l '()))
+
+;; Mapping over a list
+
+(define (map procedure l)
+  (define (inner procedure l accumulated)
+    (if (null? l)
+        accumulated
+        (inner procedure (cdr l) (append accumulated (list (procedure (car l)))))))
+  (inner procedure l '()))
+
+;; Evaluate procedure on each element of l in order
+;; result is unspecified
+
+(define (for-each procedure l)
+  (unless (null? l)
+      (procedure (car l))
+      (for-each procedure (cdr l))))
+
+;; Left associative reduction
+
+(define (reduce-left procedure initial l)
+  (define (inner procedure accumulated l)
+    (if (null? l)
+        accumulated
+        (inner procedure (procedure accumulated (car l)) (cdr l))))
+  (cond ((null? l)
+         initial)
+        ((null? (cdr l))
+         (car l))
+        (#t (inner procedure (car l) (cdr l)))))
+
+(define reduce reduce-left)
+
+(define (reduce-right procedure initial l)
+  (define (inner procedure accumulated l)
+    (if (null? l)
+        accumulated
+        (inner procedure (procedure (last l) accumulated (reverse (except-last l))))))
+  (cond ((null? l)
+         initial)
+        ((null? (cdr l))
+         (car l))
+        (#t (inner procedure (last l) (reverse (except-last l))))))
