@@ -148,15 +148,6 @@ def load(filename):
 history_max_size = 40
 history = []
 
-def load_history():
-    with open('history.txt') as f:
-        history = f.readlines()
-
-def save_history():
-    with open('history.txt', 'w') as f:
-        for line in history:
-            f.write('{0}\n'.format(line))
-
 def add_to_history(line):
     global history
     if line and (not history or history[0] != line):
@@ -649,6 +640,4 @@ if __name__ == '__main__':
     except OSError:
         pass
 
-    # load_history()
     repl()
-    # save_history()
