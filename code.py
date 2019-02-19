@@ -166,7 +166,7 @@ def repl():
     index = 0
     ctrl_c_seen = False
 
-    while True:                         # for each command
+    while True:                         # for each line
         try:
             if input:
                 prompt = '... '
@@ -208,8 +208,7 @@ def repl():
                             raise SyntaxError('unexpected EOF in list')
                         val = eval(x)
                         if val is not None:
-                            sys.stdout.write('\x1b[0G\x1b[{0}C\n'.format(index + len(prompt)))
-                            sys.stdout.write(to_string(val))
+                            sys.stdout.write('\n{0}'.format(to_string(val)))
                         input = ''
                     except SyntaxError as e:
                         if str(e) != 'unexpected EOF in list':
