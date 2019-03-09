@@ -249,7 +249,7 @@ def repl():
                 elif ch == 11:            # CTRL-K: clear to end of line
                     line = line[:index]
 
-                elif ch in {08, 127}:     # backspace/DEL
+                elif ch in {8, 127}:     # backspace/DEL
                     if index > 0:
                         line = line[:index - 1] + line[index:]
                         index -= 1
