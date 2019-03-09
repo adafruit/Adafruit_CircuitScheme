@@ -27,7 +27,7 @@ All text above must be included in any redistribution.
 
 ################ Symbol, Procedure, classes
 
-import ure, sys
+import re, sys
 from io import StringIO
 import gc
 
@@ -64,8 +64,7 @@ eof_object = Symbol('#<eof-object>') # Note: uninterned; can't be read
 
 class InPort(object):
     "An input port. Retains a line of chars."
-    # tokenizer = r"""\s*(,@|[('`,)]|"(?:[\\].|[^\\"])*"|;.*|[^\s('"`,;)]*)(.*)"""
-    tokenizer = r"""[ ]*(,@|[('`,)]|"(?:[\\].|[^\\"])*"|;.*|[^ ('"`,;)]*)(.*)"""
+    tokenizer = r""" *(,@|[('`,)]|"(?:\\.|[^\\"])*"|;.*|[^ ('"`,;)]*)(.*)"""
     def __init__(self, afile):
         self._file = afile; self.line = ''
     def next_token(self):
@@ -74,7 +73,7 @@ class InPort(object):
             if self.line == '': self.line = self._file.readline()
             if self.line == '': return eof_object
             self.line = self.line.strip()
-            m = ure.match(InPort.tokenizer, self.line)
+            m = re.match(InPort.tokenizer, self.line)
             token = m.group(1)
             self.line = m.group(2)
             if token != '' and not token.startswith(';'):
