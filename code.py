@@ -305,7 +305,6 @@ def repl():
                 sys.stdout.write("\x1b[{0}C".format(len(prompt) + index)) # Move cursor too index
                 # sys.stdout.flush()
         except KeyboardInterrupt:
-            print('ctrl-c from KeyboardInterrupt')
             if ctrl_c_seen:
                 return
             ctrl_c_seen = True
