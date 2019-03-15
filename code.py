@@ -13,7 +13,7 @@ Licensed under the MIT license.
 All text above must be included in any redistribution.
 """
 
-# Initially we'll avoid all pylit's complaints.
+# Initially we'll avoid all pylint's complaints.
 # Over time we'll bring it in line.
 
 # pylint: disable=wrong-import-order,no-member,missing-docstring,invalid-name
@@ -27,11 +27,10 @@ All text above must be included in any redistribution.
 
 ################ Symbol, Procedure, classes
 
-# from __future__ import division
-# from __future__ import print_function
-import ure, sys
+import re, sys
 from io import StringIO
 import gc
+
 
 class Symbol(str): pass
 
@@ -65,8 +64,7 @@ eof_object = Symbol('#<eof-object>') # Note: uninterned; can't be read
 
 class InPort(object):
     "An input port. Retains a line of chars."
-    # tokenizer = r"""\s*(,@|[('`,)]|"(?:[\\].|[^\\"])*"|;.*|[^\s('"`,;)]*)(.*)"""
-    tokenizer = r"""[ ]*(,@|[('`,)]|"(?:[\\].|[^\\"])*"|;.*|[^ ('"`,;)]*)(.*)"""
+    tokenizer = r""" *(,@|[('`,)]|"(?:\\.|[^\\"])*"|;.*|[^ ('"`,;)]*)(.*)"""
     def __init__(self, afile):
         self._file = afile; self.line = ''
     def next_token(self):
@@ -75,7 +73,7 @@ class InPort(object):
             if self.line == '': self.line = self._file.readline()
             if self.line == '': return eof_object
             self.line = self.line.strip()
-            m = ure.match(InPort.tokenizer, self.line)
+            m = re.match(InPort.tokenizer, self.line)
             token = m.group(1)
             self.line = m.group(2)
             if token != '' and not token.startswith(';'):
@@ -135,20 +133,187 @@ def load(filename):
     "Eval every expression from a file."
     if not filename.endswith('.scm'):
         filename = filename + '.scm'
-    repl(None, InPort(open(filename)), None)
-
-def repl(prompt='==> ', inport=InPort(sys.stdin), out=sys.stdout):
-    "A prompt-read-eval-print loop."
+    inport = InPort(open(filename))
     while True:
         try:
-            if prompt: sys.stderr.write(prompt)
             x = parse(inport)
             if x is eof_object: return
-            val = eval(x)
-            if val is not None and out:
-                print(to_string(val))
+            eval(x)
         except Exception as e:
             sys.print_exception(e)
+
+############ REPL history support
+
+history_max_size = 40
+history = []
+
+def add_to_history(line):
+    global history
+    if line and (not history or history[0] != line):
+        history = history[:history_max_size - 1]
+        history.insert(0, line.strip())
+
+def get_history(offset):
+    if offset < 0 or offset >= len(history):
+        return ''
+    return history[offset]
+
+def repl():
+    "A prompt-read-eval-print loop."
+    input = ''
+    line = ''
+    index = 0
+    ctrl_c_seen = False
+
+    while True:                         # for each line
+        try:
+            if input:
+                prompt = '... '
+            else:
+                prompt = '==> '
+            sys.stdout.write(prompt)
+            index = 0
+            line = ''
+            history_offset = -1
+
+            while True:                   # for each character
+                ch = ord(sys.stdin.read(1))
+
+                # if ch == 3:               # CTRL-C
+                #     print('ctrl-c from ch == 3')
+                #     if ctrl_c_seen:
+                #         return
+                #     ctrl_c_seen = True
+                #     input = ''
+                #     sys.stdout.write('\n')
+                #     break
+
+                ctrl_c_seen = False
+
+                if 32 <= ch <= 126:           # printable character
+                    line = line[:index] + chr(ch) + line[index:]
+                    index += 1
+
+                elif ch in {10, 13}:          # EOL - try to process
+                    if input:
+                        input = input + ' ' + line.strip()
+                    else:
+                        input = line.strip()
+                    add_to_history(line.strip())
+                    line = ''
+                    try:
+                        x = parse(input)
+                        if x is eof_object:
+                            raise SyntaxError('unexpected EOF in list')
+                        val = eval(x)
+                        if val is not None:
+                            sys.stdout.write('\n{0}'.format(to_string(val)))
+                        input = ''
+                    except SyntaxError as e:
+                        if str(e) != 'unexpected EOF in list':
+                            sys.stdout.write('\n')
+                            sys.stdout.write(str(e))
+                            input = ''
+                    sys.stdout.write('\n')
+                    break
+
+                #####################
+
+                elif ch == 1:             # CTRL-A: start of line
+                    index = 0
+
+                elif ch == 5:             # CTRL-E: end of line
+                    index = len(line)
+
+                #####################
+
+                elif ch == 2:             # CTRL-B: back a word
+                    while index > 0 and line[index-1] == ' ':
+                        index -= 1
+                    while index > 0 and line[index-1] != ' ':
+                        index -= 1
+
+                elif ch == 6:             # CTRL-F: forward a word
+                    while index < len(line) and line[index] == ' ':
+                        index += 1
+                    while index < len(line) and line[index] != ' ':
+                        index += 1
+
+                #####################
+
+                elif ch == 4:             # CTRL-D: delete forward
+                    if index < len(line):
+                        line = line[:index] + line[index+1:]
+
+                elif ch == 11:            # CTRL-K: clear to end of line
+                    line = line[:index]
+
+                elif ch in {8, 127}:     # backspace/DEL
+                    if index > 0:
+                        line = line[:index - 1] + line[index:]
+                        index -= 1
+
+                #####################
+
+                elif ch == 20:            # CTRL-T: transpose characters
+                    if index > 0 and index < len(line):
+                        ch1 = line[index - 1]
+                        ch2 = line[index]
+                        line = line[:index - 1] + ch2 + ch1 + line[index + 1:]
+
+
+                #####################
+
+                elif ch == 27:            # ESC
+                    next1, next2 = ord(sys.stdin.read(1)), ord(sys.stdin.read(1))
+                    if next1 == 91:           # [
+                        if next2 == 68:       # left arrow
+                            if index > 0:
+                                index -= 1
+                            else:
+                                sys.stdout.write('\x07')
+                        elif next2 == 67:     # right arrow
+                            if index < len(line):
+                                index += 1
+                            else:
+                                sys.stdout.write('\x07')
+                        elif next2 == 66:     # down arrow
+                            if history_offset > -1:
+                                history_offset -= 1
+                                line = get_history(history_offset)
+                                index = len(line)
+                            else:
+                                sys.stdout.write('\x07')
+                        elif next2 == 65:     # up arrow
+                            if history_offset < len(history) - 1:
+                                history_offset += 1
+                                line = get_history(history_offset)
+                                index = len(line)
+                            else:
+                                sys.stdout.write('\x07')
+
+                else:
+                    print('Unknown character: {0}'.format(ch))
+
+                # Update screen
+                sys.stdout.write("\x1b[1000D") # Move all the way left
+                sys.stdout.write("\x1b[0K")    # Clear the line
+                sys.stdout.write(prompt)
+                sys.stdout.write(line)
+                sys.stdout.write("\x1b[1000D") # Move all the way left again
+                sys.stdout.write("\x1b[{0}C".format(len(prompt) + index)) # Move cursor too index
+                # sys.stdout.flush()
+        except KeyboardInterrupt:
+            if ctrl_c_seen:
+                return
+            ctrl_c_seen = True
+            input = ''
+            sys.stdout.write('\n')
+        except Exception as e:
+            sys.stdout.write('\n')
+            sys.print_exception(e)
+            sys.stdout.write('\n')
+            input = ''
 
 ################ Environment class
 
