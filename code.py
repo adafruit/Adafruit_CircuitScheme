@@ -35,10 +35,17 @@ import gc
 class Symbol(str): pass
 
 def Sym(s, symbol_table={}):
-    "Find or create unique Symbol entry for str s in symbol table."
-    if s not in symbol_table: symbol_table[s] = Symbol(s)
+    """Find or create unique Symbol entry for str s in symbol table.
+    Returns the symbol.
+
+    :param s: the string form of the desired symbol
+    :param symbol_table: The symbol table (dictionary) to look up in, defaults to an empty dict.
+    """
+    if s not in symbol_table:
+        symbol_table[s] = Symbol(s)
     return symbol_table[s]
 
+# Create some builtin sysmols
 _quote, _if, _cond, _set, _define, _lambda, _begin, _definemacro, = map(Sym,
 "quote   if   cond   set!  define   lambda   begin   define-macro".split())
 
@@ -47,17 +54,30 @@ _quasiquote, _unquote, _unquotesplicing = map(Sym,
 
 class Procedure(object):
     "A user-defined Scheme procedure."
+
     def __init__(self, parms, exp, env):
+        """Create a procedure.
+        :param parms: parameter names
+        :param exp: The expression for the body of the procedure
+        :param env: The lexical environment to which the procedure belongs
+        """
         self.parms, self.exp, self.env = parms, exp, env
+
     def __call__(self, *args):
+        """Evaluate a procedure.
+        :param args: the arguments for the procedure evaluation
+        """
         return eval(self.exp, Env(self.parms, args, self.env))
 
 ################ parse, read, and user interaction
 
 def parse(inport):
-    "Parse a program: read and expand/error-check it."
+    """Parse a program: read and expand/error-check it.
+    :param inport: where to parse from
+    """
     # Backwards compatibility: given a str, convert it to an InPort
-    if isinstance(inport, str): inport = InPort(StringIO(inport))
+    if isinstance(inport, str):
+        inport = InPort(StringIO(inport))
     return expand(read(inport), toplevel=True)
 
 eof_object = Symbol('#<eof-object>') # Note: uninterned; can't be read
@@ -65,13 +85,21 @@ eof_object = Symbol('#<eof-object>') # Note: uninterned; can't be read
 class InPort(object):
     "An input port. Retains a line of chars."
     tokenizer = r""" *(,@|[('`,)]|"(?:\\.|[^\\"])*"|;.*|[^ ('"`,;)]*)(.*)"""
+
     def __init__(self, afile):
-        self._file = afile; self.line = ''
+        """Create a new InPort.
+        :param afile: the file-like object that characters will come from
+        """
+        self._file = afile
+        self.line = ''
+
     def next_token(self):
-        "Return the next token, reading new text into line buffer if needed."
+        """Return the next token, reading new text into line buffer if needed."""
         while True:
-            if self.line == '': self.line = self._file.readline()
-            if self.line == '': return eof_object
+            if self.line == '':
+                self.line = self._file.readline()
+            if self.line == '':
+                return eof_object
             self.line = self.line.strip()
             m = re.match(InPort.tokenizer, self.line)
             token = m.group(1)
@@ -80,7 +108,9 @@ class InPort(object):
                 return token
 
 def readchar(inport):
-    "Read the next character from an input port."
+    """Read and return the next character from an input port.
+    :param inport: Where to read from
+    """
     if inport.line != '':
         ch, inport.line = inport.line[0], inport.line[1:]
         return ch
@@ -88,7 +118,9 @@ def readchar(inport):
         return inport.file.read(1) or eof_object
 
 def read(inport):
-    "Read a Scheme expression from an input port."
+    """Read a Scheme expression from an input port.
+    :param inport: where to read from
+    """
     def read_ahead(token):
         if '(' == token:
             L = []
@@ -96,11 +128,16 @@ def read(inport):
                 token = inport.next_token()
                 if token == ')':
                     return L
-                else: L.append(read_ahead(token))
-        elif ')' == token: raise SyntaxError('unexpected )')
-        elif token in quotes: return [quotes[token], read(inport)]
-        elif token is eof_object: raise SyntaxError('unexpected EOF in list')
-        else: return atom(token)
+                else:
+                    L.append(read_ahead(token))
+        elif ')' == token:
+            raise SyntaxError('unexpected )')
+        elif token in quotes:
+            return [quotes[token], read(inport)]
+        elif token is eof_object:
+            raise SyntaxError('unexpected EOF in list')
+        else:
+            return atom(token)
     # body of read:
     token1 = inport.next_token()
     return eof_object if token1 is eof_object else read_ahead(token1)
@@ -108,29 +145,45 @@ def read(inport):
 quotes = {"'":_quote, "`":_quasiquote, ",":_unquote, ",@":_unquotesplicing}
 
 def atom(token):
-    'Numbers become numbers; #t and #f are booleans; "..." string; otherwise Symbol.'
-    if token == '#t': return True
-    elif token == '#f': return False
-    elif token[0] == '"': return token[1:-1]#.decode('string_escape')
-    try: return int(token)
+    """Convert a token to its corresponding atomic value.
+    Numbers become numbers; #t and #f are booleans; "..." string; otherwise Symbol.
+    :param token: the token to convert"""
+    if token == '#t':
+        return True
+    elif token == '#f':
+        return False
+    elif token[0] == '"':
+        return token[1:-1]#.decode('string_escape')
+    try:
+        return int(token)
     except ValueError:
-        try: return float(token)
+        try:
+            return float(token)
         except ValueError:
             return Sym(token)
 
 def to_string(x):
-    "Convert a Python object back into a Lisp-readable string."
-    if x is True: return "#t"
-    elif x is False: return "#f"
-    elif isa(x, Symbol): return str(x)
-#    elif isa(x, str): return '"%s"' % x.encode('string_escape').replace('"',r'\"')
-    elif isa(x, str): return '"%s"' % x.replace('"',r'\"')
+    """Convert a Python object back into a Lisp-readable string.
+    :param x: the object to convert"""
+    if x is True:
+        return "#t"
+    elif x is False:
+        return "#f"
+    elif isa(x, Symbol):
+        return str(x)
+#    elif isa(x, str):
+#        return '"%s"' % x.encode('string_escape').replace('"',r'\"')
+    elif isa(x, str):
+        return '"%s"' % x.replace('"',r'\"')
     elif isa(x, list):
         return '('+' '.join(map(to_string, x))+')'
-    else: return str(x)
+    else:
+        return str(x)
 
 def load(filename):
-    "Eval every expression from a file."
+    """Eval every expression from a file.
+    :param filename: the name of the file to load
+    """
     if not filename.endswith('.scm'):
         filename = filename + '.scm'
     inport = InPort(open(filename))
@@ -148,18 +201,25 @@ history_max_size = 40
 history = []
 
 def add_to_history(line):
+    """Add a line to the REPL history.
+    :param line: the line to be added
+    """
     global history
     if line and (not history or history[0] != line):
         history = history[:history_max_size - 1]
         history.insert(0, line.strip())
 
 def get_history(offset):
+    """Retrieve a line from the history.
+    :param offset: The index into the history; 0 is the most recent and
+                   larger offsets are older
+    """
     if offset < 0 or offset >= len(history):
         return ''
     return history[offset]
 
 def repl():
-    "A prompt-read-eval-print loop."
+    "A read-eval-print loop with readline-like behavior."
     input = ''
     line = ''
     index = 0
